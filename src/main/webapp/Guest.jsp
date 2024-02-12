@@ -3,6 +3,7 @@
 <html>
 <head>
     <title>Hello Guest!</title>
+    <link rel="stylesheet" type="text/css" href="styles.css">
 </head>
 <body>
 <div class="container">
