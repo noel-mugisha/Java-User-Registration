@@ -10,7 +10,7 @@
 <div class="container">
     <h2>Login</h2>
 
-    <form action="LoginServletController" method="post">
+    <form action="login" method="post">
         <label for="email">Email:</label>
         <input type="text" id="email" name="email" required><br>
 
