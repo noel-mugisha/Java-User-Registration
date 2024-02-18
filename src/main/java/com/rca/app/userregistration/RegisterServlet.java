@@ -1,5 +1,6 @@
 package com.rca.app.userregistration;
 
+import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -22,51 +23,66 @@ public class RegisterServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setContentType("text/html");
-
         String userName = req.getParameter("username");
         String email = req.getParameter("email");
         String password = req.getParameter("password");
+        String role = req.getParameter("role");
+
+        // Validate email and password using RegexValidator
+        boolean isValidEmail = RegexValidator.isValidEmail(email);
+        boolean isValidPassword = RegexValidator.isValidPassword(password);
+
+        if (!isValidEmail || !isValidPassword) {
+            // Redirect to an error page or display an error message
+            resp.getWriter().println("Invalid email or password format.");
+            return;
+        }
 
         // Hashing the password
         String hashedPassword = PasswordHasher.hashPassword(password);
 
-        String role = req.getParameter("role");
-
         try {
-            // Use try-with-resources to automatically close resources
             Class.forName("com.mysql.cj.jdbc.Driver");
             String url = "jdbc:mysql://localhost:3306/javaUserDb";
             String userN = "root";
             String pass = "";
 
-            try (Connection con = DriverManager.getConnection(url, userN, pass)) {
-                String sql = "INSERT INTO users (userName, email, password, role) VALUES (?, ?, ?, ?)";
-                try (PreparedStatement ps = con.prepareStatement(sql)) {
-                    ps.setString(1, userName);
-                    ps.setString(2, email);
-                    ps.setString(3, hashedPassword);
-                    ps.setString(4, role);
+            try (Connection con = DriverManager.getConnection(url, userN, pass);
+                 PreparedStatement ps = con.prepareStatement("INSERT INTO users (userName, email, password, role) VALUES (?,?,?,?)")) {
 
-                    int rowsAffected = ps.executeUpdate();
+                ps.setString(1, userName);
+                ps.setString(2, email);
+                ps.setString(3, hashedPassword);
+                ps.setString(4, role);
 
-                    if (rowsAffected > 0) {
-                        System.out.println("Data inserted successfully!");
+                int rowsAffected = ps.executeUpdate();
 
-                        // Redirect based on user role
-                        if ("admin".equalsIgnoreCase(role)) {
-                            // Redirect to admin.jsp
-                            resp.sendRedirect("Admin.jsp");
-                        } else if ("guest".equalsIgnoreCase(role)) {
-                            // Redirect to guest.jsp
-                            resp.sendRedirect("Guest.jsp");
-                        }
-                    } else {
-                        System.out.println("Failed to insert data.");
+                if (rowsAffected > 0) {
+                    System.out.println("Data inserted successfully!");
+
+                    // Redirect based on user role
+                    if ("admin".equalsIgnoreCase(role)) {
+                        // Forward to admin.jsp
+                        RequestDispatcher dispatcher = req.getRequestDispatcher("Admin.jsp");
+                        dispatcher.forward(req, resp);
+                    } else if ("guest".equalsIgnoreCase(role)) {
+                        // Forward to guest.jsp
+                        RequestDispatcher dispatcher = req.getRequestDispatcher("Guest.jsp");
+                        dispatcher.forward(req, resp);
                     }
+
+                } else {
+                    System.out.println("Failed to insert data.");
                 }
+
+            } catch (SQLException e) {
+                // Log or handle the SQL exception appropriately
+                e.printStackTrace();
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal Server Error");
             }
-        } catch (ClassNotFoundException | SQLException e) {
-            // Log the exception or handle it appropriately
+
+        } catch (ClassNotFoundException e) {
+            // Log or handle the ClassNotFoundException appropriately
             e.printStackTrace();
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal Server Error");
         }
